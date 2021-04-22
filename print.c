@@ -92,6 +92,18 @@ print_type(struct ast_type *type)
    }
 }
 
+char *uitoa(uint32 n)
+{
+    int len = n==0 ? 1 : floor(log10l(labs(n)))+1;
+    char *buf = malloc(len+1); // +1 for null
+    buf[len--]='\0';
+    do {
+         buf[len--] = n % 10 + '0';
+     } while ((n /= 10) > 0);
+    return buf;
+}
+
+
 char *itoa(int32 n)
 {
     int sign;
@@ -119,25 +131,76 @@ emit_int32(int32 q)
 
 static void
 emit_float32(float32 q)
-{
-    int32 *dd = &q;
-    int32 sign = (((*dd & 0x80000000)>>31)==0)?0:1;
-    int32 shift = (((*dd & 0x7f800000)>>23)-127);
-    int32 int_part= ((((*dd & 0x007fffff) | 0x00800000 )>>(23-shift)));
-    int32 fract_binary= (((*dd & 0x007fffff) << (9 + shift)));
-    int32 fract_part = 0;
-    int32 helper = 500000000;
-    for(int i=0;i<32;i++){
-        if(fract_binary & 0x80000000){
-            fract_part += helper;
+{ 
+  
+    uint32 *dd = &q;
+    uint32 sign = (((*dd & 0x80000000)>>31)==0)?0:1;
+    uint32 fraction= (*dd & 0x00ffffff) | 0x00800000;
+    int32 exponent = ((*dd & 0x7f800000)>>23);
+    if(exponent == 0xff)    {
+        if(fraction & 0x007fffff)
+        {
+            emit("NaN");
         }
-        fract_binary <<= 1;
-        helper >>=1;
+        else
+        {
+            emit("inf");
+        }
+    }else{
+        if(exponent == 0x00){
+            emit("0.0");
+        }else{
+            double fractpart, intpart;
+            float tmp = q;
+            int32 exp10 = 0;
+            fractpart = modf(tmp , &intpart);
+            while((intpart<1) | (intpart>9)){
+                if(intpart<1){
+                    exp10--;
+                    tmp*=10;
+                }else{
+                    if(intpart>9){
+                       exp10++;
+                       tmp /=10;
+                    }
+                }
+                fractpart = modf(tmp , &intpart);
+            }
+           
+            fraction<<=8;
+            exponent -= 127;
+            float32 multipler = powf(2,exponent)/powf(10,exp10);
+            int multipler_count = 0;
+            while((multipler*10)<0xfffffff){
+                multipler_count++;
+                multipler*=10;
+                }
+            uint32 temp = (uint32)multipler;
+            uint32 helper =0;
+            for(int i=0;i<32;i++){
+                if(fraction & 0x80000000){
+                    helper += temp;
+                }
+                fraction <<= 1;
+                temp >>= 1;
+            }
+           char *num_str = uitoa(helper);
+           if(sign) emit("-");
+           char *num_str2=num_str;
+           char num_str1[2]={0,0};
+           num_str1[0]=num_str[0];
+           num_str2++;
+           emit(num_str1);
+           emit(".");
+           emit(num_str2);
+           free(num_str);
+           if(exp10 != 0){
+               emit("e");
+               if(exp10>0)emit("+");
+               emit_int32(exp10);
+           }
+        }
     }
-    emit_int32(int_part);
-    emit(".");
-    emit_int32(fract_part);
-    emit("F");
    //printf("%f", q);
 }
 
