@@ -1,0 +1,39 @@
+/*
+home {
+    _ "Hi, Welcome"
+}
+error {
+    headers.add('HTTP/1.0 404 Not Found')
+    headers.add('Content-Type: text/html; charset=utf-8')
+    label {
+        type: 'h1'
+        _ "Not found!"
+    }
+}
+main {
+    _ "Star..."
+    web.init()
+    if system.args.length === 2 {
+        port = system.args[1]
+    } else  {
+        port=8080;
+    }
+    routes {
+        if 5 > 2 {
+            /blog {
+                home()
+            }
+        }
+        else {
+            /blog {
+                _ "Hi"
+            }
+        }
+        * {
+            error()
+        }
+    }
+    web.listen(port)
+}
+*/
+

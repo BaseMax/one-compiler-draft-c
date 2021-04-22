@@ -1,9 +1,11 @@
 all: build
 
 build: parser lexer
-	clang -Wall -o one ast.c print.c\
+	gcc -o one ast.c print.c\
 						   lex.yy.c parser.tab.c\
-						   -lfl -lstdc++
+						   one.c\
+						   -lfl  -lm -g  -w -Wno-psabi
+						   #-fsanitize=address
 
 lexer: lexer.l
 	flex lexer.l
